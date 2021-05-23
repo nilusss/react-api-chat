@@ -181,18 +181,19 @@ function Conversation({ conversation, user }) {
           <div ref={endOfContentRef} />
         </div>
         <nav className="navbar position-fixed bottom-0">
-          <div className="navbar-content content">
-            <form action="..." method="...">
-              <div class="form-group">
-                <textarea
-                  class="form-control form-control-sm"
-                  placeholder="Small textarea for multi-line input"
-                ></textarea>
+          <div className="navbar-content d-inline-block w-full">
+            <form action="#" method="">
+              <div className="d-inline-block w-three-quarter float-left pr-30">
+                <input
+                  type="text"
+                  className="form-control pr-10"
+                  placeholder="Aa"
+                />
               </div>
               <input
-                className="btn btn-primary float-right"
+                className="btn btn-primary d-inline-block float-left"
                 type="submit"
-                value="Submit"
+                value="⇨"
               />
             </form>
           </div>
