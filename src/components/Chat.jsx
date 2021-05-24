@@ -1,5 +1,5 @@
-import { render } from "@testing-library/react";
 import axios from "axios";
+import moment from "moment";
 import { useEffect, useState, useRef } from "react";
 import { getRandomColorFromString } from "./random-color";
 
@@ -12,12 +12,11 @@ const a_pi = axios.create({
 });
 
 export function Chat() {
-  const user = { username: "nilusss" };
+  const user = { username: "user" };
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  function updateConversation() {}
+  const [timerInterval, setTimerInterval] = useState();
 
   useEffect(() => {
     async function make_async() {
@@ -29,10 +28,22 @@ export function Chat() {
         );
       });
       setConversations(_conversations);
+      if (activeConversation) {
+        const updatedConvo = _conversations.find(
+          (c) => c.id === activeConversation.id
+        );
+        setActiveConversation(updatedConvo);
+      }
       setLoading(false);
     }
     make_async();
-  }, []);
+    const timer = setTimeout(async () => {
+      make_async();
+      console.log("5 sec");
+      setTimerInterval(new Date());
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [timerInterval]);
   if (loading) return "loading";
   return (
     <>
@@ -41,7 +52,11 @@ export function Chat() {
         user={user}
         setActiveConversation={setActiveConversation}
       />
-      <Conversation conversation={activeConversation} user={user} />
+      <Conversation
+        conversation={activeConversation}
+        user={user}
+        setActiveConversation={setActiveConversation}
+      />
     </>
   );
 }
@@ -104,8 +119,33 @@ function ConvosList({ conversations, user, setActiveConversation }) {
   );
 }
 
-function Conversation({ conversation, user }) {
-  const endOfContentRef = useRef(null);
+function Conversation({ conversation, user, setActiveConversation }) {
+  const endOfContentRef = useRef(null); //used for autoscroll when loading chat
+  const messageEl = useRef(null);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+
+    const data = {
+      content: messageEl.current.value,
+    };
+    console.log(data);
+
+    const response = await a_pi.post(
+      "/chat-test/" +
+        user.username +
+        "/" +
+        conversation.participants.find((p) => p.username !== user.username)
+          .username,
+      data
+    );
+    const convoCopy = { ...conversation };
+    convoCopy.messages.push(response.data);
+    setActiveConversation(convoCopy);
+    messageEl.current.value = "";
+    messageEl.current.focus();
+  }
+
   function scrollToBottom() {
     endOfContentRef.current?.scrollIntoView();
   }
@@ -117,8 +157,8 @@ function Conversation({ conversation, user }) {
   }
   return (
     <>
-      <div style={{ paddingLeft: "var(--sidebar-width)" }}>
-        <nav className="navbar position-sticky top-0">
+      <div style={{ paddingLeft: "var(--sidebar-width) " }} className="h-full">
+        <nav className="navbar position-sticky top-0" style={{ zIndex: "99" }}>
           <div className="navbar-content content">
             <div className="d-flex position-relative pr-50">
               <div className="d-flex align-items-center">
@@ -158,43 +198,57 @@ function Conversation({ conversation, user }) {
         </nav>
         <div
           className="content"
-          style={{ paddingBottom: "var(--navbar-height)" }}
+          style={{
+            paddingBottom: "var(--navbar-height)",
+          }}
         >
-          {Object(conversation.messages).map((message, index) => (
-            <div className="container clearfix" key={index}>
-              <div
-                style={{ maxWidth: "50%" }}
-                key={index}
-                className={
-                  message.author.username === user.username
-                    ? "float-right card p-10 d-block"
-                    : "float-left card p-10 d-block"
-                }
-              >
-                <p key={index} className="margin-0">
-                  {message.content}
-                </p>
+          {Object(conversation.messages).map((message, index) => {
+            const floatSide =
+              message.author.username === user.username
+                ? "float-right"
+                : "float-left";
+            const bgColor =
+              message.author.username === user.username ? "bg-primary" : "";
+            return (
+              <div className="clearfix mb-20 pt-20" key={index}>
+                <div className={floatSide + " mw-half"}>
+                  <div
+                    key={index}
+                    className={bgColor + " card p-10 d-block m-0"}
+                  >
+                    <p key={index} className="m-0">
+                      {message.content}
+                    </p>
+                  </div>
+                  <span className={floatSide + " font-size-12 text-muted pt-5"}>
+                    {moment(message.createdAt).format("ddd HH:MM")}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           <div ref={endOfContentRef} />
         </div>
-        <nav className="navbar position-fixed bottom-0">
+        <nav
+          style={{ width: "calc(100% - var(--sidebar-width))" }}
+          className="navbar position-fixed bottom-0"
+        >
           <div className="navbar-content d-inline-block w-full">
-            <form action="#" method="">
-              <div className="d-inline-block w-three-quarter float-left pr-30">
-                <input
-                  type="text"
-                  className="form-control pr-10"
-                  placeholder="Aa"
-                />
-              </div>
+            <form
+              className="form-inline"
+              onSubmit={handleSubmit}
+              autoComplete="off"
+            >
               <input
-                className="btn btn-primary d-inline-block float-left"
-                type="submit"
-                value="⇨"
+                required
+                type="text"
+                name="message"
+                className="form-control pr-10"
+                placeholder="Aa"
+                ref={messageEl}
               />
+              <input className="btn btn-primary" type="submit" value="⇨" />
             </form>
           </div>
         </nav>
